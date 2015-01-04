@@ -1,0 +1,70 @@
+apply plugin: 'groovy'
+apply plugin: 'war'
+apply plugin: 'com.bmuschko.tomcat'
+
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-tomcat-plugin:2.0'
+    }
+}
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile 'org.codehaus.groovy:groovy-all:2.3.7'
+    compile 'com.h2database:h2:1.4.184'
+    compile 'org.springframework.boot:spring-boot-starter-web:1.2.0.RELEASE'
+    compile 'org.springframework.boot:spring-boot-starter-data-jpa:1.2.0.RELEASE'
+
+    testCompile "org.gebish:geb-spock:0.10.0"
+    testCompile 'org.spockframework:spock-core:0.7-groovy-2.0'
+    testCompile 'junit:junit:4.11'
+
+    def tomcatVersion = '8.0.15'
+    tomcat "org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}"
+    tomcat "org.apache.tomcat.embed:tomcat-embed-logging-log4j:${tomcatVersion}"
+    tomcat("org.apache.tomcat.embed:tomcat-embed-jasper:${tomcatVersion}") {
+        exclude group: 'org.eclipse.jdt.core.compiler', module: 'ecj'
+    }
+}
+
+
+ext {
+    tomcatStopPort = 8081
+    tomcatStopKey = 'stopKey'
+}
+
+tomcatRun {
+    contextPath = '/'
+}
+
+task integrationTomcatRun(type: com.bmuschko.gradle.tomcat.tasks.TomcatRun) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+    daemon = true
+    contextPath = '/'
+}
+
+task integrationTomcatStop(type: com.bmuschko.gradle.tomcat.tasks.TomcatStop) {
+    stopPort = tomcatStopPort
+    stopKey = tomcatStopKey
+}
+
+task integrationTest(type: Test) {
+    include '**/*FunctionalTest.*'
+    dependsOn test, integrationTomcatRun
+    finalizedBy integrationTomcatStop
+}
+
+test {
+    exclude '**/*FunctionalTest.*'
+}
+
+check {
+    dependsOn integrationTest
+}
